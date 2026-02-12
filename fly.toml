@@ -1,42 +1,23 @@
-# Fly.io Configuration - BRAVOS BRASIL Backend
-app = "bravosbackend"
-primary_region = "gru"  # São Paulo, Brazil
+# fly.toml app configuration file generated for bravosbackend on 2026-02-12T18:13:52Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'bravosbackend'
+primary_region = 'gru'
 
 [build]
-  dockerfile = "Dockerfile"
 
-[env]
-  PORT = "8080"
-  NODE_ENV = "production"
-
-[[services]]
-  processes = ["app"]
+[http_service]
   internal_port = 8080
-  protocol = "tcp"
-  auto_stop_machines = false
+  force_https = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
+  processes = ['app']
 
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-    force_https = true
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 25
-    soft_limit = 20
-
-  [[services.http_checks]]
-    interval = "10s"
-    timeout = "2s"
-    grace_period = "5s"
-    method = "GET"
-    path = "/health"
-
-[processes]
-  app = "npm start"
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
