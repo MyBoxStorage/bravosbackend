@@ -1,0 +1,133 @@
+// Prisma Schema - BRAVOS BRASIL E-commerce
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  category    String
+  sizes       String[] // Array de tamanhos disponíveis
+  colors      String[] // Array de cores disponíveis
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  total        Float
+  subtotal     Float?      // Subtotal antes de frete e descontos
+  discountTotal Float?     @map("discount_total") // Desconto total aplicado
+  status       OrderStatus @default(PENDING)
+  mpPaymentId  String?     @map("mp_payment_id") // ID do pagamento no Mercado Pago
+  mpPreferenceId String?   @map("mp_preference_id") // ID da preferência de pagamento no Mercado Pago
+  mpStatus     String?     @map("mp_status") // Status do pagamento no MP
+  payerName    String?     @map("payer_name")
+  payerEmail   String      @map("payer_email")
+  payerCpf     String?     @map("payer_cpf")
+  payerPhone   String?     @map("payer_phone")
+  paymentMethod String?    @map("payment_method") // "pix" ou "bolbradesco"
+  pixQrCode    String?     @map("pix_qr_code") // QR Code do PIX
+  pixCopyPaste String?     @map("pix_copy_paste") // Código copia e cola do PIX
+  boletoUrl    String?     @map("boleto_url") // URL do boleto
+  boletoBarcode String?    @map("boleto_barcode") // Código de barras do boleto
+  externalReference String @unique @map("external_reference") // Referência externa única
+  
+  // Endereço de entrega
+  shippingCep        String?  @map("shipping_cep") // CEP
+  shippingAddress1   String?  @map("shipping_address1") // Rua/avenida
+  shippingNumber     String?  @map("shipping_number") // Número (string pq pode ter "S/N")
+  shippingDistrict   String?  @map("shipping_district") // Bairro
+  shippingCity       String?  @map("shipping_city") // Cidade
+  shippingState      String?  @map("shipping_state") // UF
+  shippingComplement String?  @map("shipping_complement") // Complemento
+  
+  // Informações de frete
+  shippingCost       Float   @default(0) @map("shipping_cost") // Custo do frete
+  shippingService    String? @map("shipping_service") // Nome do serviço/transportadora
+  shippingDeadline   Int?    @map("shipping_deadline") // Prazo em dias
+  
+  // Integração Montink
+  montinkOrderId     String? @map("montink_order_id") // ID do pedido no Montink
+  montinkStatus      String? @map("montink_status") // Status do pedido no Montink
+  
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  items       OrderItem[]
+  adminEvents AdminEvent[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String  @map("order_id")
+  productId  String  @map("product_id")
+  quantity   Int
+  unitPrice  Float   @map("unit_price")
+  size       String?
+  color      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  READY_FOR_MONTINK  // Pedido pago, pronto para envio à Montink (quando POST estiver disponível)
+  SENT_TO_MONTINK    // Pedido enviado à Montink com sucesso
+  FAILED_MONTINK     // Falha ao enviar pedido à Montink
+  CANCELED
+  FAILED
+  REFUNDED
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String   // Ex: "mercadopago"
+  eventId     String   @map("event_id") // ID do evento/notificação ou payment id
+  eventType   String?  @map("event_type") // payment, merchant_order, etc.
+  receivedAt DateTime @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+  payload     Json?    // Armazena o payload bruto se útil
+  status      String?  // processed / ignored / failed
+  errorMessage String? @map("error_message")
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
+}
+
+model AdminEvent {
+  id                String   @id @default(cuid())
+  action            String
+  orderId           String   @map("order_id")
+  externalReference String   @map("external_reference")
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("admin_events")
+}
