@@ -44,6 +44,9 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# OpenSSL 3 for Prisma engine on Alpine
+RUN apk add --no-cache openssl
+
 ENV NODE_ENV=production
 ENV PORT=8080
 
