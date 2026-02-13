@@ -1,5 +1,6 @@
 # Dockerfile for Fly.io - BRAVOS BRASIL Backend
-FROM node:20-alpine AS base
+# Base: Debian slim for Prisma 5.x OpenSSL compatibility (libssl.so.1.1)
+FROM node:20-bookworm-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -44,8 +45,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# OpenSSL 3 for Prisma engine on Alpine
-RUN apk add --no-cache openssl
+# OpenSSL + CA certs for Prisma engine on Debian
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=8080
